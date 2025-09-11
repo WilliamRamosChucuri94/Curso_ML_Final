@@ -1,0 +1,845 @@
+---
+title: "Análisis del Precio del Oro"
+subtitle: "Dirección de Comercialización de Oro – BCE"
+author: "Econ. William Ramos"
+date: "`r Sys.Date()`"  
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    number-sections: true
+    output-file: "index"
+  docx: default
+  pdf:
+    toc: true
+    number-sections: true
+    df-print: kable
+bibliography: referencias.bib
+lang: es
+params:
+  fecha_corte: "2024-12-31"
+---
+
+------------------------------------------------------------------------
+
+# Prueba
+
+Prueba de Quarto del Banco Central del Ecuador @ghule2022gold
+
+1.  prueba 1
+
+2.  prueba 2
+
+3.  prueba 3
+
+4.  [link](https://www.bce.fin.ec/estadisticas-economicas/)
+
+```{r, echo=FALSE}
+1 + 1
+```
+
+![](https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRVeaZg1T6yBJG9Rl4P8MCkpv2QYV6pALqItQ&s){fig-align="center" width="150"}
+
+```{r}
+#| label: setup
+#| message: false
+#| warning: false
+
+library(tidyverse)
+library(gt)
+library(quantmod)
+library(tidyquant)
+library(TTR)
+library(zoo)
+library(lubridate)
+
+# Valor por defecto de params si alguien ejecuta sin YAML/CLI
+if (!exists("params") || is.null(params$fecha_corte)) {
+  params <- list(fecha_corte = "2024-12-31")
+}
+
+# Rutas candidatas (si este .qmd vive en reports/)
+candidatas <- c("data/gold_dataset_monthly.rds",
+                "../data/gold_dataset_monthly.rds",
+                "../../data/gold_dataset_monthly.rds")
+ruta <- candidatas[file.exists(candidatas)][1]
+if (is.na(ruta)) stop("No se encontró gold_dataset_monthly.rds en data/, ../data/ o ../../data/")
+
+d <- readr::read_rds(ruta)
+
+# Aplicar parámetro de fecha
+fecha_corte <- as.Date(params$fecha_corte)
+d <- d |> filter(date <= fecha_corte)
+
+# Helper de formato
+fmt_usd <- function(tbl, cols) {
+  tbl |> fmt_currency(columns = {{ cols }}, currency = "USD")
+}
+
+# Helpers de formato (usa sep_mark en lugar de thousands_sep)
+fmt_num <- function(tbl, columns, dec = 2) {
+  gt::fmt_number(
+    data     = tbl,
+    columns  = {{ columns }},
+    decimals = dec,
+    dec_mark = ",",
+    sep_mark = "."
+  )
+}
+
+fmt_usd <- function(tbl, columns, dec = 2) {
+  gt::fmt_currency(
+    data     = tbl,
+    columns  = {{ columns }},
+    currency = "USD",
+    decimals = dec,
+    dec_mark = ",",
+    sep_mark = "."
+  )
+}
+```
+
+```{r, echo=FALSE}
+d |> select(date,GOLD) %>% 
+  tail(12) %>% 
+  gt() %>% 
+  tab_header(title = "Oro: últimos 12 meses") %>% 
+  fmt_usd(columns = GOLD)
+```
+
+# Gráfico
+
+```{r}
+d %>% 
+  ggplot(aes(date,GOLD))+
+  geom_line(linewidth=0.8)+
+  labs(x=NULL, y= "USD/oz", title = "Evolución mensual del precio del oro (USD)",
+  subtitle= "2006-presente",
+    caption="Fuente: Yahoo Finance")+
+  theme_minimal()+
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, size = 12, face = "italic"),
+    plot.caption = element_text(hjust = 0.5, size = 9)
+  )
+```
+
+**Tabla**
+
+```{r}
+d |> select(date,GOLD) %>% 
+  tail(12) %>% 
+  gt() %>% 
+    cols_label(
+      date="Fecha",
+      GOLD="Precio Oro (USD)/oz"
+    ) %>% 
+  tab_header(title = "Oro: últimos 12 meses") %>% 
+  fmt_usd(columns = GOLD) %>% 
+  tab_source_note(
+    source_note = "Fuente:FED"
+  )
+```
+
+# **UNIDAD 2. INTRODUCCIÓN A MACHINE LEARNING: REGRESIÓN LINEAL**
+
+![](images/Machine%20Learning_ML.png){fig-align="center" width="300"}
+
+## Machine Learning
+
+**¿En donde podemos aplicar Machine Learning (ML)?**
+
+![](images/clipboard-194840170.png)
+
+# UNIDAD 3. Creación de un flujo de trabajo de Machine Learning (ML)
+
+## Introducción a la regresión lineal en R-lm
+
+La regresión lineal es un modelo estadístico y de machine learning supervisado que se utiliza para explicar y predecir una variable dependiente (también llamada variable respuesta o ***Y***) a partir de una o varias variables independientes (también llamadas regresores, predictores o ***X***).
+
+La idea central es ajustar una línea recta (o hiperplano en dimensiones mayores) que relacione los valores de ***X*** con los de ***Y***, minimizando la diferencia entre los valores observados y los predichos.
+
+**Forma matemática**
+
+Para una **regresión lineal simple** (con una sola variable (X)):
+
+$Y_i = \beta_0 + \beta_1 X_i + \varepsilon_i$
+
+-   $Y_i$: Variable dependiente (lo que queremos explicar).\
+-   $X_i$: Variable independiente (el predictor).\
+-   $\beta_0$: Intercepto (valor de $Y$ cuando $X=0$).\
+-   $\beta_1$: Pendiente (cambio promedio en $Y$ por cada unidad adicional de $X$).\
+-   $\varepsilon_i$: término de error (factores no observados).
+
+------------------------------------------------------------------------
+
+En la **regresión múltiple** (con varios predictores):
+
+$Y_i = \beta_0 + \beta_1 X_{1i} + \beta_2 X_{2i} + \dots + \beta_k X_{ki} + \varepsilon_i$
+
+**¿Cómo se estima?**
+
+Se utiliza el método de Mínimos Cuadrados Ordinarios (MCO / OLS, por sus siglas en inglés), que busca los valores de los coeficiente que minimizan la suma de los errores al cuadrado:
+
+$\min_{\beta} \sum_{i=1}^{n} (Y_i - \hat{Y}_i)^2$
+
+**Interpretación**
+
+-   El modelo explica la relación promedio lineal entre $Y$ y las variables $X$.
+
+-   Los coeficientes \$\\beta\$ representan el efecto marginal de cada variable independiente sobre $Y$,manteniendo las demás constante.
+
+-   El $R^2$ mide el porcentaje de la variabilidad de $Y$ explicado por el modelo.
+
+    **Ejemplo intuitivo**
+
+    Si $Y$= **ingreso mensual** y $X$ **años de educación**
+
+    $Ingreso$ = $\beta_0$+$\beta_1$x $Educación$+$\varepsilon_i$
+
+-   $\beta_0$: Ingreso esperado si la educación = $0$
+
+-   $\beta_1$: Cuanto aumenta (en promedio) el ingreso por cada año adicional de educación.
+
+**En Resumen**
+
+-   Un modelo estadístico y predictivo.
+
+-   Busca una relación lineal entre variables
+
+-   Se estima normalmente con mínimos cuadrados.
+
+-   Es una de las herramientas más usadas en estadística, econometría y machine learning.
+
+**¡Vamos a la practica!**
+
+**Observamos la gráfica del oro**
+
+```{r}
+plot(d$date, d$GOLD, 
+     type = "l",          # "l" = line
+     col = "blue", 
+     lwd = 2,             # grosor de la línea
+     xlab = "Fecha", 
+     ylab = "Valor Oro en niveles", 
+     main = "Evolución del oro en niveles")
+```
+
+**Observamos la gráfica del dólar**
+
+```{r}
+plot(d$date, d$DOLLAR, 
+     type = "l",          # "l" = line
+     col = "blue", 
+     lwd = 2,             # grosor de la línea
+     xlab = "Fecha", 
+     ylab = "Dolar en niveles", 
+     main = "Evolución del dólar en niveles")
+```
+
+**Retornos en gráficos: Oro**
+
+```{r}
+plot(d$date, d$gold_ret, 
+     type = "l",          # "l" = line
+     col = "blue", 
+     lwd = 2,             # grosor de la línea
+     xlab = "Fecha", 
+     ylab = "Retorno del oro", 
+     main = "Evolución del retorno del oro")
+```
+
+**Retornos en gráficos: Dolar**
+
+```{r}
+plot(d$date, d$dollar_ret, 
+     type = "l",          # "l" = line
+     col = "blue", 
+     lwd = 2,             # grosor de la línea
+     xlab = "Fecha", 
+     ylab = "Retorno del dólar", 
+     main = "Evolución del retorno del dólar")
+```
+
+```{r}
+s1 <- d |>
+  select(date, gold_ret, dollar_ret) |>
+  drop_na()
+print(s1)
+```
+
+```{r}
+regresion <- lm(gold_ret ~ dollar_ret, data = s1)
+summary(regresion)
+```
+
+**Interpretemos**
+
+$$
+gold\_ret_{t} = 0.006652 - 1.0913 \cdot dollar\_ret_{t} + \varepsilon_{t}
+$$
+
+**Coeficientes**
+
+-   Intercepto: $(0.006652,\; p=0.019)$
+
+-   Cuando el retorno del dólar es cero, el retorno promedio del oro es aproximadamente $0.66\%$.\
+    Es significativo al $5\%$ ($p < 0.05$).
+
+-   Pediente: $(-1.0913,\; p < 0.001)$
+
+-   Por cada incremento de $1$ unidad en el retorno del dólar, el retorno del oro disminuye en promedio $1.09$ unidades.\
+    Es altamente significativo ($p \approx 0.000000425$).\
+    El signo negativo confirma la teoría: la apreciación del dólar tiende a reducir el precio del oro.
+
+**Coeficientes**
+
+**Intercepto** $(0.006652,\; p=0.019)$
+
+Cuando el retorno del dólar es cero:
+
+$$
+\hat{Y} = 0.006652
+$$
+
+El retorno promedio del oro es ≈ $0.66\%$.\
+Es significativo al $5\%$ ($p < 0.05$).
+
+------------------------------------------------------------------------
+
+**Pendiente** $(-1.0913,\; p < 0.001)$
+
+Por cada incremento de $1$ unidad en el retorno del dólar:
+
+$$
+\Delta gold\_ret = -1.0913 \cdot \Delta dollar\_ret
+$$
+
+El retorno del oro disminuye en promedio $1.09$ unidades.\
+Es altamente significativo ($p \approx 0.000000425$).\
+El signo negativo confirma la teoría: la apreciación del dólar tiende a reducir el precio del oro.
+
+------------------------------------------------------------------------
+
+🔹 **Bondad de ajuste**
+
+$$
+R^2 = 0.1612 \quad (16.1\%)
+$$
+
+El modelo explica solo un $16\%$ de la variación en el retorno del oro.\
+Esto es común en series financieras: el oro depende de múltiples factores, no solo del dólar.
+
+$$
+R^2_{ajustado} = 0.155
+$$
+
+Confirma que la complejidad no añade mucha pérdida.
+
+Error estándar residual:
+
+$$
+\sigma_{\hat{\varepsilon}} = 0.03408
+$$
+
+En promedio, los residuos (errores) son de $3.4$ puntos porcentuales.
+
+------------------------------------------------------------------------
+
+🔹 **Pruebas de significancia global**
+
+$$
+F = 28.06, \quad p < 0.001
+$$
+
+El modelo en su conjunto es estadísticamente significativo.\
+Al menos un coeficiente (aquí $\beta_1$) difiere de cero.
+
+------------------------------------------------------------------------
+
+🔹 Resumen interpretativo
+
+-   **Dirección:** relación negativa clara entre dólar y oro.\
+-   **Magnitud:** movimientos del dólar tienen un efecto importante en el oro.\
+-   **Significancia:** el efecto es estadísticamente robusto.\
+-   **Limitación:** el modelo explica solo una fracción pequeña de la variación ($16\%$).
+
+------------------------------------------------------------------------
+
+📊 **Conclusión**
+
+La regresión simple muestra evidencia sólida de que el dólar influye en el oro de forma negativa.\
+Sin embargo, la baja capacidad predictiva ($R^2$ bajo) implica que se necesitan otros factores (petróleo, tasas de interés, inflación, shocks geopolíticos) para construir un modelo predictivo más fuerte.
+
+**Cuadro resumen**
+
+```{r}
+library(gt)
+#| label: simple-lm
+lm_s <- lm(gold_ret ~ dollar_ret, data = s1)
+broom::tidy(lm_s, conf.int = TRUE) |>
+  gt() |>
+  tab_header(title = "OLS (simple): coeficientes e IC 95%") |>
+  fmt_num(c(estimate, std.error, statistic, p.value, conf.low, conf.high), dec = 6)
+
+```
+
+**Un cuadro mas completo**
+
+```{r}
+library(gt)
+
+resumen <- broom::tidy(lm_s, conf.int = TRUE) |>
+  mutate(
+    sig = case_when(
+      p.value < 0.01 ~ "***",
+      p.value < 0.05 ~ "**",
+      p.value < 0.1  ~ "*",
+      TRUE ~ ""
+    ),
+    interpretacion = c(
+      "Cuando el retorno del dólar es 0, el oro sube ≈ 0.66% en promedio",
+      "Un aumento de 1% en el retorno del dólar reduce el retorno del oro en ≈ 1.09%"
+    )
+  )
+
+gt(resumen) |>
+  fmt_number(columns = c(estimate, std.error, statistic, p.value, conf.low, conf.high),
+             decimals = 6, dec_mark = ",", sep_mark = ".") |>
+  tab_header(title = "OLS (simple): coeficientes e interpretación") |>
+  cols_label(
+    term = "Variable",
+    estimate = "Estimador",
+    std.error = "Error Est.",
+    statistic = "t",
+    p.value = "p-valor",
+    conf.low = "IC 95% (Inf)",
+    conf.high = "IC 95% (Sup)",
+    sig = "Sig.",
+    interpretacion = "Interpretación"
+  )
+
+```
+
+**¿Cómo se ve gráficamente esta relación lineal?**
+
+```{r}
+# Gráfico de dispersión correcto
+plot(d$dollar_ret, d$gold_ret,
+     main = "Regresión lineal: Oro vs Dólar",
+     xlab = "Rendimiento del dólar",
+     ylab = "Rendimiento del oro",
+     pch = 19, col = "darkgray")
+
+# Modelo consistente
+modelo <- lm(gold_ret ~ dollar_ret, data = d)
+
+# Línea de regresión
+abline(modelo, col = "blue", lwd = 2)
+
+
+```
+
+**Gráfico con ggplot**
+
+```{r, warning=FALSE, message=FALSE}
+s1 |> ggplot(aes(dollar_ret, gold_ret)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = TRUE, linewidth = 0.9) +
+  labs(x = "Retorno del Dólar (DXY)", y = "Retorno del Oro", title = "Regresión lineal simple") +
+  theme_minimal()
+
+```
+
+**Diagnostico predictivo inicial**
+
+```{r}
+library(broom)
+library(gt)
+
+# Ajuste del modelo
+lm_s <- lm(gold_ret ~ dollar_ret, data = d)
+
+# Resumen del modelo
+glance_tbl <- broom::glance(lm_s)
+
+# Tabla con formateo
+glance_tbl %>%
+  gt() %>%
+  tab_header(title = "Diagnóstico global (R², F, σ, AIC/BIC)") %>%
+  fmt_number(
+    columns = c(r.squared, adj.r.squared, sigma, statistic, p.value, AIC, BIC, logLik, deviance),
+    decimals = 6,
+    dec_mark = ",",
+    sep_mark = "."
+  )
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+tabla <- data.frame(
+  Estadístico = c("R²", "R² ajustado", "σ (residual standard error)", 
+                  "F (statistic)", "p-value (modelo)", 
+                  "df (grados de libertad regresor)", "df.residual", "nobs",
+                  "LogLik", "AIC", "BIC", "Deviance"),
+  Valor = c(0.161, 0.155, 0.0341, 28.06, "< 0.0001", 
+            1, 146, 148, 291.08, -576.16, -567.17, 0.1696),
+  Interpretación = c(
+    "El modelo explica el 16.1% de la variación en el retorno del oro a partir del retorno del dólar.",
+    "Similar al R², ajusta por el número de predictores. Confirma que el modelo no está sobreajustado.",
+    "El error típico de los residuos es ≈ 3.4 puntos porcentuales en los retornos del oro. Indica la magnitud del error de predicción.",
+    "Prueba de significancia global: el modelo como conjunto es significativo.",
+    "Muy fuerte evidencia de que al menos un coeficiente (el retorno del dólar) explica parte de la variación en el oro.",
+    "Solo hay un predictor (dollar_ret).",
+    "Grados de libertad de los residuos (n - k - 1).",
+    "Observaciones efectivas utilizadas.",
+    "Valor de la función de verosimilitud. Base para comparar modelos.",
+    "Criterio de Akaike: más bajo indica mejor ajuste relativo.",
+    "Criterio de Bayes: penaliza más por complejidad, útil en comparación de modelos.",
+    "Suma de residuos al cuadrado (varianza no explicada)."
+  )
+)
+
+gt(tabla)
+
+```
+
+## Supuestos de OLS y diagnósticos
+
+-   **Linealidad**: Este supuesto implica que la relación entre las variables independientes y la variable dependiente debe ser lineal. Si la relación es no lineal, los resultados de la regresión (lineal) pueden ser poco confiables y conducir a interpretaciones erróneas sobre la relación entre las variables.
+
+-   **Normalidad**: El supuesto de normalidad establece que los **errores** de la regresión deben seguir una distribución normal. ¡Cuidado con esto!, los errores, no las variables. Cuando este supuesto se cumple, las pruebas de hipótesis y los intervalos de confianza pueden interpretarse con mayor precisión. Si la normalidad no se cumple, los intervalos de confianza y las pruebas de hipótesis pueden verse afectados, lo que puede conducir a conclusiones erróneas.
+
+-   **Homocedasticidad**: Este supuesto implica que la varianza de los **errores** debe ser constante en todos los niveles de las variables predictoras. Cuando se viola este supuesto, se produce **heterocedasticidad**, lo que significa que la dispersión de los errores varía en diferentes rangos de las variables predictoras. La presencia de heterocedasticidad puede distorsionar los intervalos de confianza y los valores p-value, lo que puede afectar la precisión de las pruebas de hipótesis.
+
+-   **Independencia**: El supuesto de independencia indica que los errores de la regresión no deben estar correlacionados entre sí. Si hay autocorrelación presente, puede afectar la precisión de los coeficientes y las pruebas de hipótesis, lo que lleva a conclusiones erróneas sobre la importancia de las variables predictoras. **¿Qué es la autocorrelación?** la presencia de autocorrelación en los residuos indica que **los errores del modelo muestran cierto patrón sistemático en su distribución a lo largo del tiempo**. Recordad que los errores o residuos de un modelo de regresión deberían distribuirse de manera aleatoria y seguir una distribución normal con media cero y varianza constante.
+
+```{r}
+#| label: diag-plots
+#| fig-cap: "Residuos vs ajustados (homocedasticidad y forma)"
+aug <- broom::augment(lm_s)
+aug |>
+  ggplot(aes(.fitted, .resid)) +
+  geom_hline(yintercept = 0, linetype = 2, color="gray50") +
+  geom_point(alpha = 0.6) +
+  labs(x="Ajustados", y="Residuos") + theme_minimal()
+
+```
+
+```{r}
+#| label: diag-qq
+#| fig-cap: "Normalidad: Q–Q plot"
+qq <- qqnorm(resid(lm_s), plot.it = FALSE)
+tibble(x = qq$x, y = qq$y) |>
+  ggplot(aes(x, y)) +
+  geom_abline(slope = 1, intercept = 0, color="gray50") +
+  geom_point(alpha = 0.6) + theme_minimal() +
+  labs(x="Teórico", y="Muestral")
+
+```
+
+```{r}
+#| label: tests
+# Pruebas formales
+dw <- lmtest::dwtest(lm_s)      # autocorrelación
+bp <- lmtest::bptest(lm_s)      # heterocedasticidad (Breusch–Pagan)
+sh <- shapiro.test(resid(lm_s)) # normalidad (muestras pequeñas)
+
+tibble(
+  prueba = c("Durbin–Watson", "Breusch–Pagan", "Shapiro–Wilk"),
+  estadistico = c(dw$statistic, bp$statistic, sh$statistic),
+  p_value     = c(dw$p.value, bp$p.value, sh$p.value)
+) |>
+  gt() |> tab_header(title = "Pruebas de supuestos (simple)") |>
+  fmt_num(c(estadistico, p_value), dec = 6)
+
+```
+
+```{r}
+#| label: influence
+#| fig-cap: "Puntos influyentes (Cook's D)"
+cook <- cooks.distance(lm_s)
+thr  <- 4/(nrow(s1) - 2 - 1) # umbral aproximado
+tibble(i = seq_along(cook), cooksD = as.numeric(cook)) |>
+  ggplot(aes(i, cooksD)) +
+  geom_hline(yintercept = thr, color="firebrick", linetype = 2) +
+  geom_point(alpha = 0.6) + theme_minimal() +
+  labs(x="Índice", y="Cook's D", subtitle=paste("Umbral ≈", round(thr, 4)))
+
+```
+
+• Con 1 predictor, VIF = 1 trivialmente (no hay multicolinealidad).\
+
+• En series de tiempo, la autocorrelación y heterocedasticidad son frecuentes. Lo importante es reportarlo y pasar a un flujo robusto fuera de muestra.
+
+## Análisis Eploratorio de Datos (EDA)
+
+```{r}
+library(tidymodels)
+library(tidyverse)
+library(skimr)
+library(DataExplorer)
+library(ggpubr)
+library(univariateML)
+library(GGally)
+library(doParallel)
+skim(d)
+```
+
+**Datos faltantes**
+
+```{r}
+d %>% map_dbl(.f = function(x){sum(is.na(x))})
+```
+
+**Missing data**
+
+```{r}
+plot_missing(
+  data    = d, 
+  title   = "Porcentaje de valores ausentes",
+  ggtheme = theme_bw(),
+  theme_config = list(legend.position = "none")
+)
+```
+
+**Distribución o Densidad**
+
+```{r}
+p1 <- ggplot(data = d, aes(x = GOLD)) +
+      geom_density(fill = "steelblue", alpha = 0.8) +
+      geom_rug(alpha = 0.1) +
+      scale_x_continuous(labels = scales::comma) +
+      labs(title = "Distribución original") +
+      theme_bw() 
+
+p2 <- ggplot(data = d, aes(x = sqrt(GOLD))) +
+      geom_density(fill = "steelblue", alpha = 0.8) +
+      geom_rug(alpha = 0.1) +
+      scale_x_continuous(labels = scales::comma) +
+      labs(title = "Transformación raíz cuadrada") +
+      theme_bw()
+
+p3 <- ggplot(data = d, aes(x = log(GOLD))) +
+      geom_density(fill = "steelblue", alpha = 0.8) +
+      geom_rug(alpha = 0.1) +
+      scale_x_continuous(labels = scales::comma) +
+      labs(title = "Transformación logarítmica") +
+      theme_bw() 
+
+ggarrange(p1, p2, p3, ncol = 1, align = "v")
+```
+
+**Varible ret**
+
+```{r, message=FALSE, warning=FALSE}
+
+p1 <- ggplot(data = d, aes(x = gold_ret)) +
+      geom_density(fill = "steelblue", alpha = 0.8) +
+      geom_rug(alpha = 0.1) +
+      scale_x_continuous(labels = scales::comma) +
+      labs(title = "Distribución original") +
+      theme_bw() 
+
+p2 <- ggplot(data = d, aes(x = sqrt(gold_ret))) +
+      geom_density(fill = "steelblue", alpha = 0.8) +
+      geom_rug(alpha = 0.1) +
+      scale_x_continuous(labels = scales::comma) +
+      labs(title = "Transformación raíz cuadrada") +
+      theme_bw()
+
+p3 <- ggplot(data = d, aes(x = log(gold_ret))) +
+      geom_density(fill = "steelblue", alpha = 0.8) +
+      geom_rug(alpha = 0.1) +
+      scale_x_continuous(labels = scales::comma) +
+      labs(title = "Transformación logarítmica") +
+      theme_bw() 
+
+ggarrange(p1, p2, p3, ncol = 1, align = "v")
+```
+
+**Distribución de variables continuas**
+
+```{r}
+plot_density(
+  data    = d %>% select(-up_next),
+  ncol    = 3,
+  title   = "Distribución variables continuas",
+  ggtheme = theme_bw(),
+  theme_config = list(
+                  plot.title = element_text(size = 16, face = "bold"),
+                  strip.text = element_text(colour = "black", size = 12, face = 2)
+                 )
+  )
+```
+
+**Plot de variables cualitativas**
+
+```{r}
+plot_bar(
+  d,
+  ncol    = 3,
+  title   = "Número de observaciones por grupo",
+  ggtheme = theme_bw(),
+  theme_config = list(
+                   plot.title = element_text(size = 16, face = "bold"),
+                   strip.text = element_text(colour = "black", size = 12, face = 2),
+                   legend.position = "none"
+                  )
+)
+```
+
+```{r}
+#| label: eda
+eda <- d |>
+  select(gold_next_ret, dollar_ret, wti_ret, infl_yoy, ma6, ma12, rsi14) |>
+  drop_na()
+
+cor(eda, use="pairwise.complete.obs") |>
+  as.data.frame() |> rownames_to_column("var") |> as_tibble() |>
+  gt() |> tab_header(title="Correlaciones (Pearson)") |> fmt_num(everything(), dec=3)
+```
+
+# **Tidymodels**
+
+![](images/Captura%20de%20pantalla%202025-09-10%20124819.png){fig-align="center"}
+
+# **Preprocesamiento**
+
+**rsample:** Creamos una división entre train y test
+
+## Partición temporal y feature engineering (Recipes)
+
+```{r, warning=FALSE, message=FALSE}
+library(rsample)
+library(recipes)
+
+set.seed(123)
+datos <- d |>
+  select(date, gold_next_ret, dollar_ret, wti_ret, infl_yoy, ma6, ma12, rsi14) |>
+  drop_na()
+
+split <- initial_time_split(datos, prop = 0.80)
+train <- training(split); test <- testing(split)
+
+tibble(n_train=nrow(train), n_test=nrow(test),
+       min_train=min(train$date), max_train=max(train$date),
+       min_test=min(test$date),   max_test=max(test$date)) |>
+  gt() |> tab_header(title="Partición temporal")
+
+```
+
+```{r}
+print (split)
+```
+
+```{r}
+library(recipes)
+#| label: recipe
+rec <- recipes::recipe(gold_next_ret ~ dollar_ret + wti_ret + infl_yoy + ma6 + ma12 + rsi14, data=train) |>
+  step_zv(all_predictors()) |>
+  step_normalize(all_numeric_predictors()) |>
+  step_corr(all_numeric_predictors(), threshold = 0.95)
+
+prep(rec)  # mostrará qué variables elimina por colinealidad (p.ej. ma12)
+
+
+```
+
+-   **Inputs**
+
+    1 variable objetivo (`gold_next_ret`) y 6 predictores (los listados)
+
+    **Training information**
+
+    -   La receta “aprendió” usando **118 observaciones** de `train` y no encontró filas incompletas
+
+    **Operations**
+
+    -   **Zero variance**: no se eliminó ninguna ( `<none>` ).
+
+        **Centering and scaling**: se normalizaron todos los predictores numéricos.
+
+        **Correlation filter on: `ma12`**: el filtro de correlación **eliminó `ma12`** por estar **muy correlacionada** (\|ρ\| ≥ 0.95) con otra(s) variable(s) —típicamente con `ma6`, porque son medias móviles muy parecidas.
+
+        En otras palabras: **tu diseño final** para el modelo quedó con los predictores normalizados y **sin `ma12`** (para evitar colinealidad).
+
+## **Especificación del modelo y engine (parsnip)**
+
+```{r}
+library(parsnip)
+
+mod_lm <- linear_reg() |> set_engine("lm")
+wf <- workflow() |> add_recipe(rec) |> add_model(mod_lm)
+wf
+
+```
+
+**Ajuste, predicción y diagnóstico**
+
+```{r}
+#| label: fit-predict
+fit_lm <- fit(wf, data = train)
+preds  <- predict(fit_lm, new_data = test) |>
+  bind_cols(test |> select(date, gold_next_ret))
+
+preds |> slice_tail(n=8) |>
+  gt() |> tab_header(title="Predicciones (últimas filas)") |>
+  fmt_num(c(.pred, gold_next_ret), dec=6)
+```
+
+```{r}
+#| label: fig-pred-real
+#| fig-cap: "Test: Real vs Predicho"
+preds |>
+  ggplot(aes(gold_next_ret, .pred)) +
+  geom_point(alpha=0.7) +
+  geom_smooth(method="lm", se=FALSE, linewidth=0.9) +
+  labs(x="Real", y="Predicho") + theme_minimal()
+```
+
+```{r}
+#| label: resid-time
+#| fig-cap: "Residuos en Test"
+preds |>
+  mutate(resid = gold_next_ret - .pred) |>
+  ggplot(aes(date, resid)) +
+  geom_hline(yintercept=0, linetype=2, color="gray50") +
+  geom_line(linewidth=0.8, color="firebrick") +
+  theme_minimal() + labs(x=NULL, y="Residual")
+
+```
+
+```{r}
+#| label: engine-diagnostics
+eng <- fit_lm |> extract_fit_engine()
+broom::glance(eng) |>
+  gt() |> tab_header(title="Resumen (engine lm)") |>
+  fmt_num(c(r.squared, adj.r.squared, sigma, AIC, BIC, statistic, p.value), dec=6)
+
+lmtest::dwtest(eng); lmtest::bptest(eng); performance::check_model(eng)
+
+```
+
+## Métricas y validación temporal
+
+```{r}
+#| label: metrics
+yardstick::metrics(preds, truth = gold_next_ret, estimate = .pred) |>
+  gt() |> tab_header(title="Métricas en Test") |> fmt_num(.estimate, dec=6)
+
+```
+
+```{r}
+#| label: rolling-origin
+set.seed(123)
+rs <- rolling_origin(
+  datos,
+  initial = 60, assess = 12, skip = 6, cumulative = TRUE
+)
+res_cv <- fit_resamples(wf, resamples = rs, control = control_resamples(save_pred = TRUE))
+collect_metrics(res_cv) |>
+  gt() |> tab_header(title="CV temporal (promedios)") |> fmt_num(c(mean, std_err), dec=6)
+
+```
