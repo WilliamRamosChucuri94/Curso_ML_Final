@@ -527,6 +527,28 @@ aug |>
 
 ```
 
+## 1. Gráfico de **Residuos vs. Ajustados**
+
+-   **Qué muestra**:
+
+    -   En el eje X están los valores ajustados (predichos por el modelo)
+
+        En el eje Y están los residuos (diferencia entre observado y predicho).
+
+    **Interpretación**:
+
+    -   La nube de puntos parece estar dispersa alrededor de la línea horizontal 0, sin un patrón claro.
+
+        Esto es bueno: sugiere que **no hay heterocedasticidad fuerte ni relación sistemática no captada por el modelo**.
+
+        Si vieras una forma de “abanico” (residuos más grandes a medida que crece el ajustado) o una curva, eso indicaría problemas como heterocedasticidad o falta de linealidad.
+
+    -   **Uso en clase**: sirve para explicar la verificación de dos supuestos:
+
+    -   La varianza constante de los errores (homocedasticidad).
+
+        Que el modelo capta la relación lineal y no deja un patrón estructurado en los residuos.
+
 ```{r}
 #| label: diag-qq
 #| fig-cap: "Normalidad: Q–Q plot"
@@ -538,6 +560,10 @@ tibble(x = qq$x, y = qq$y) |>
   labs(x="Teórico", y="Muestral")
 
 ```
+
+-   Compara la distribución de los residuos del modelo con la distribución normal teórica.
+
+-   La mayoría de los puntos sigue la línea diagonal gris, lo que indica que los residuos son **aproximadamente normales**.
 
 ```{r}
 #| label: tests
@@ -553,25 +579,40 @@ tibble(
 ) |>
   gt() |> tab_header(title = "Pruebas de supuestos (simple)") |>
   fmt_num(c(estadistico, p_value), dec = 6)
-
+d
 ```
 
-```{r}
-#| label: influence
-#| fig-cap: "Puntos influyentes (Cook's D)"
-cook <- cooks.distance(lm_s)
-thr  <- 4/(nrow(s1) - 2 - 1) # umbral aproximado
-tibble(i = seq_along(cook), cooksD = as.numeric(cook)) |>
-  ggplot(aes(i, cooksD)) +
-  geom_hline(yintercept = thr, color="firebrick", linetype = 2) +
-  geom_point(alpha = 0.6) + theme_minimal() +
-  labs(x="Índice", y="Cook's D", subtitle=paste("Umbral ≈", round(thr, 4)))
+**Durbin Watson**
 
-```
+-   **Hipótesis**
 
-• Con 1 predictor, VIF = 1 trivialmente (no hay multicolinealidad).\
+-   Ho: No hay autocorrelación en los residuos
 
-• En series de tiempo, la autocorrelación y heterocedasticidad son frecuentes. Lo importante es reportarlo y pasar a un flujo robusto fuera de muestra.
+-   H1: Existe autocorrelación (+ o -)
+
+-   El estadístico DW ≈ 2 (ideal, indica independencia).
+
+-   Como p-valor \> 0.05, **no rechazamos H₀** → no hay evidencia de autocorrelación en los residuos.
+
+**Breusch–Pagan**
+
+-   Ho: Los residuos son homocedásticos (varianza constante)
+
+-   H1: Los residuos son heterocedásticos (varianza no constante)
+
+-   p-valor \> 0.05, **no rechazamos H₀** → no hay evidencia de heterocedasticidad significativa.
+
+**Shapiro–Wilk (normalidad de residuos)**
+
+-   Ho: Los residuos siguen una distribución normal
+
+-   H1: Los residuos no siguen una distribución normal
+
+-   p-valor \> 0.05, **no rechazamos H₀** → los residuos pueden considerarse aproximadamente normales.
+
+    **Comentario**
+
+-   En series de tiempo, la autocorrelación y heterocedasticidad son frecuentes. Lo importante es reportarlo y pasar a un flujo robusto fuera de muestra.
 
 ## Análisis Eploratorio de Datos (EDA)
 
@@ -701,6 +742,14 @@ cor(eda, use="pairwise.complete.obs") |>
   gt() |> tab_header(title="Correlaciones (Pearson)") |> fmt_num(everything(), dec=3)
 ```
 
+-   El **único predictor con cierta fuerza lineal sobre el oro** es el **dólar** (negativo, -0.24).
+
+    Los demáes (petrólo, inflación, medias móviles, RSI) muestran correlaciones débiles con los rendimientos inmediatos del oro.
+
+    Existe **multicolinealidad esperada entre medias móviles** (ma6 y ma12), lo que hay que cuidar si se meten juntas en un modelo.
+
+    **Indicadores técnicos (ma, rsi)** están más relacionados entre sí que con el oro, lo cual tiene sentido porque son derivados de los mismos precios.
+
 # **Tidymodels**
 
 ![](images/Captura%20de%20pantalla%202025-09-10%20124819.png){fig-align="center"}
@@ -770,11 +819,34 @@ prep(rec)  # mostrará qué variables elimina por colinealidad (p.ej. ma12)
 ```{r}
 library(parsnip)
 
-mod_lm <- linear_reg() |> set_engine("lm")
+mod_lm <- linear_reg() %>% 
+  set_engine("lm")
+
 wf <- workflow() |> add_recipe(rec) |> add_model(mod_lm)
 wf
 
 ```
+
+-   Se define un modelo de **regresión lineal** (`linear_reg()`),
+
+    Se indica que se va a usar el motor de R base `"lm"` (`set_engine("lm")`).\
+    Esto es la parte de **parsnip**: declara **qué modelo quieres**, pero aún no lo entrenas.
+
+-   `workflow()` crea un contenedor donde integras **preprocesamiento + modelo**.
+
+    `add_recipe(rec)` añade la receta (`rec`) donde definiste las transformaciones de los datos.
+
+    `add_model(mod_lm)` añade el modelo de regresión lineal que acabas de definir.
+
+-   **Preprocessor: Recipe**
+
+    -   Indica que usaste una receta con **3 pasos**:
+
+        -   `step_zv()`: elimina variables con **varianza cero** (sin información).
+
+            `step_normalize()`: normaliza las variables (media 0, varianza 1).
+
+            `step_corr()`: elimina predictores altamente correlacionados (evita multicolinealidad).
 
 **Ajuste, predicción y diagnóstico**
 
@@ -784,10 +856,34 @@ fit_lm <- fit(wf, data = train)
 preds  <- predict(fit_lm, new_data = test) |>
   bind_cols(test |> select(date, gold_next_ret))
 
-preds |> slice_tail(n=8) |>
+preds |> slice_tail(n=24) |>
   gt() |> tab_header(title="Predicciones (últimas filas)") |>
   fmt_num(c(.pred, gold_next_ret), dec=6)
 ```
+
+### Qué hace cada línea
+
+-   `fit_lm <- fit(wf, data = train)`\
+    Ajusta el **workflow** (receta + modelo `lm`) solo con el conjunto *train*.
+
+    `predict(fit_lm, new_data = test)`\
+    Genera la columna **`.pred`** (predicción del retorno del oro) sobre *test*.
+
+    `bind_cols(test |> select(date, gold_next_ret))`\
+    Anexa a las predicciones la **fecha** y el **resultado real** (`gold_next_ret`) para comparar.
+
+    `slice_tail(n = 8)`\
+    Muestra las **8 últimas observaciones** (útil si los datos son cronológicos).
+
+### Cómo leer la tabla
+
+-   **`.pred`**: lo que estima el modelo.
+
+    **`gold_next_ret`**: el valor **real** observado.
+
+    Comparando ambos puedes evaluar si el modelo **subestima** o **sobreestima** en cada fecha.
+
+    -   Ej.: 2024-02-01 → `.pred = -0.011772` vs real `0.065018` → fuerte **subestimación** (residuo ≈ +07679.0).
 
 ```{r}
 #| label: fig-pred-real
@@ -798,6 +894,22 @@ preds |>
   geom_smooth(method="lm", se=FALSE, linewidth=0.9) +
   labs(x="Real", y="Predicho") + theme_minimal()
 ```
+
+-   **Qué muestra**:
+
+    -   Eje X → valores reales de la variable dependiente (`gold_next_ret`).
+
+        Eje Y → valores predichos por el modelo (`.pred`).
+
+        La línea azul es un ajuste lineal auxiliar que indica la tendencia.
+
+    **Interpretación**:
+
+    Existe una **relación positiva**, pero débil: cuando el valor real aumenta, el modelo tiende a predecir valores mayores, aunque con bastante dispersión.
+
+    -   Muchos puntos se alejan de la línea, lo que indica que el modelo no captura bien la variabilidad de los datos.
+
+    -   Idealmente, si el modelo fuera perfecto, los puntos deberían alinearse en una diagonal con pendiente = 1 (línea identidad). Aquí, la nube dispersa muestra que el ajuste es limitado.
 
 ```{r}
 #| label: resid-time
@@ -811,6 +923,32 @@ preds |>
 
 ```
 
+-   **Qué muestra**:
+
+    -   Eje X → tiempo (fecha).
+
+        Eje Y → residuo = real − predicho.
+
+    -   La línea punteada en 0 indica el ideal (residuos centrados en cero).
+
+    -   **Interpretación**
+
+    Los residuos oscilan en torno a cero, pero se observan **patrones cíclicos** (suben y bajan en bloques).
+
+    -   Esto sugiere que el modelo **no captura componentes temporales o estacionales** de la serie (muy típico en series financieras/temporales)
+
+        Aunque no hay una tendencia clara de crecimiento en magnitud (no aumenta la varianza con el tiempo), sí se aprecia estructura → indicio de autocorrelación en los errores.
+
+-   **Conclusión general**
+
+1.  El modelo de regresión lineal capta la dirección general (positiva) pero con **poder predictivo débil**.
+
+2.  Los residuos muestran estructura temporal, lo que indica que **no son completamente aleatorios** → se viola el supuesto de independencia.
+
+3.  Para datos con fechas (series temporales), sería recomendable probar modelos que incorporen dependencia temporal, como:
+
+-   Modelos de machine learning adaptados a series temporales (XGBoost con lags, Prophet, LSTM, etc.).
+
 ```{r}
 #| label: engine-diagnostics
 eng <- fit_lm |> extract_fit_engine()
@@ -822,6 +960,71 @@ lmtest::dwtest(eng); lmtest::bptest(eng); performance::check_model(eng)
 
 ```
 
+### 1. **Durbin–Watson**
+
+-   **Hipótesis:**
+
+    -   H₀: no hay autocorrelación de primer orden en los residuos.
+
+        H₁: existe autocorrelación positiva.
+
+    **Resultado:** DW = 2.1906, p-valor = 0.7778.
+
+    **Interpretación:** DW ≈ 2 y p-valor alto → no se rechaza H₀
+
+### 2. **Breusch–Pagan**
+
+-   **Hipótesis:**
+
+    H₀: varianza constante de los residuos (homocedasticidad).
+
+    H₁: heterocedasticidad.
+
+    **Resultado:** BP = 12.134, p-valor = 0.03299.
+
+    **Interpretación:** p-valor \< 0.05 → se rechaza H₀.\
+    **Hay evidencia de heterocedasticidad** en los residuos.
+
+**Panel gráfico**
+
+-   **Posterior Predictive Check**
+
+    -   La densidad de los datos observados y predichos es parecida, aunque el modelo suaviza demasiado los extremos.\
+        Ajuste razonable pero con pérdida de variabilidad en colas
+
+<!-- -->
+
+-   **Linearity**
+
+```         
+Residuos frente a valores ajustados → no hay una curva clara, pero sí dispersión irregular.\
+La relación lineal es aceptable, aunque no perfecta.
+
+**Homogeneity of Variance**
+
+Los residuos deberían estar en una banda horizontal.
+
+-   Aquí se observa dispersión creciente en algunos tramos.
+
+    Refuerza lo detectado por Breusch–Pagan: **heterocedasticidad**.
+
+**Influential Observations (Cook’s D / leverage)**
+
+La mayoría de puntos está dentro de las líneas de influencia, pero algunos se acercan al borde.\
+xisten observaciones influyentes, aunque no excesivas.
+
+**Collinearity (VIF)**
+
+-   Todos los predictores tienen VIF \< 5 (umbral de preocupación).
+
+    **No hay problema grave de multicolinealidad**.
+
+-   **Normality of Residuals (Q-Q plot)**
+
+La mayoría de puntos sigue la diagonal, salvo en las colas.\
+Los residuos son aproximadamente normales, con ligeras desviaciones en valores extremos.
+```
+
 ## Métricas y validación temporal
 
 ```{r}
@@ -830,6 +1033,19 @@ yardstick::metrics(preds, truth = gold_next_ret, estimate = .pred) |>
   gt() |> tab_header(title="Métricas en Test") |> fmt_num(.estimate, dec=6)
 
 ```
+
+-   **RMSE (Root Mean Squared Error) = 0.0431**\
+    → Error cuadrático medio de alrededor del 4.3% en los retornos.\
+    Mientras más bajo, mejor.
+
+    **MAE (Mean Absolute Error) = 0.0345**\
+    → En promedio, la predicción se equivoca en ±3.4% del retorno.
+
+    **R² (rsq) = 0.1303**\
+    → El modelo explica apenas el **13% de la variabilidad** en el retorno del oro.\
+    Esto es bastante bajo, indicando que la regresión lineal simple capta muy poco de la dinámica real.
+
+-   Conclusión: **el modelo tiene baja capacidad predictiva** en el test. Captura algo de señal, pero la mayoría del comportamiento sigue siendo ruido.
 
 ```{r}
 #| label: rolling-origin
@@ -841,5 +1057,682 @@ rs <- rolling_origin(
 res_cv <- fit_resamples(wf, resamples = rs, control = control_resamples(save_pred = TRUE))
 collect_metrics(res_cv) |>
   gt() |> tab_header(title="CV temporal (promedios)") |> fmt_num(c(mean, std_err), dec=6)
+
+```
+
+-   **RMSE promedio = 0.0366 (±0.0021)**\
+    → En promedio, el error cuadrático medio de predicción es \~3.7%.\
+    → Es un poco mejor que el RMSE en el test simple (0.0431).
+
+    **R² promedio = 0.0479 (±0.0140)**\
+    → El modelo solo explica alrededor del **5% de la variabilidad** en los retornos.\
+    → Es incluso más bajo que en el test simple (0.13).\
+    → Esto confirma que el modelo **no generaliza bien** a lo largo del tiempo.
+
+    -   **Capacidad predictiva:** aunque el RMSE no es alto en términos absolutos, el R² cercano a cero muestra que la regresión lineal **apenas supera a un modelo trivial (predicción constante en la media)**.
+
+        **Confirmación:** lo que viste en test simple no fue casualidad: el modelo lineal **no logra capturar patrones temporales** en los retornos del oro.
+
+    -   El modelo de regresión lineal **tiene poco poder explicativo** en series financieras de retornos
+
+    -   Usar algoritmos de ML más flexibles con rolling CV (Random Forest, XGBoost, redes neuronales).
+
+        Para mejorar, se recomienda:
+
+        -   Incorporar **lags (retardos)** del oro y de los predictores.
+
+## Conclusión Final del Modelo
+
+-   **Ajuste del modelo**
+
+    Se especificó y entrenó un modelo de **regresión lineal** en el framework **tidymodels**, con un flujo completo: preprocesamiento (normalización, eliminación de variables redundantes), ajuste y evaluación.
+
+    -   El modelo permitió obtener predicciones y realizar diagnósticos formales (residuos, autocorrelación, heterocedasticidad, normalidad, influencia)
+    -   
+
+-   **Resultados en Test**
+
+```         
+**RMSE ≈ 0.043** y **MAE ≈ 0.034** → errores moderados en escala de retornos.
+
+**R² ≈ 0.13** → el modelo explica apenas un 13% de la variabilidad.
+
+**Validación Temporal (rolling-origin)**
+
+-   **RMSE promedio ≈ 0.037**, estable en distintas ventanas temporales.
+
+    **R² promedio ≈ 0.048**, cercano a cero → el modelo tiene poca capacidad explicativa.
+
+    Esto confirma que los resultados en test simple no fueron casualidad: la regresión lineal **no capta patrones temporales robustos en los retornos**.
+
+-   **Diagnóstico de supuestos**
+
+-   **No autocorrelación** significativa de los residuos (Durbin–Watson correcto).
+
+    **Heterocedasticidad presente** (Breusch–Pagan significativo).
+
+    Residuos aproximadamente normales, con desvíos en colas.
+
+    Sin problemas graves de multicolinealidad (VIF \< 5).
+
+    **Interpretación económica y práctica**
+
+-   El retorno del oro no puede explicarse bien solo con regresores lineales como dólar, petróleo, inflación o indicadores técnicos.
+
+    Los resultados reflejan la **alta aleatoriedad y ruido en series financieras de retornos**, donde los modelos lineales básicos son insuficientes.
+```
+
+```{r}
+#| label: tabla-preds-ic
+#| message: false
+#| warning: false
+library(tidyverse)
+library(gt)
+
+# Intento 1: pedir IC al workflow (parsnip reciente lo soporta)
+preds_ci <- tryCatch({
+  predict(fit_lm, new_data = test, type = "conf_int") %>%
+    bind_cols(
+      predict(fit_lm, new_data = test, type = "numeric"),
+      test %>% select(date, gold_next_ret)
+    )
+}, error = function(e) {
+  # Fallback: extraer el lm interno y hornear test con la receta
+  rec_prep   <- recipes::prep(rec)
+  test_baked <- recipes::bake(rec_prep, new_data = test)
+  eng_lm     <- workflows::extract_fit_engine(fit_lm)  # objeto 'lm'
+  ci_lm      <- as.data.frame(predict(eng_lm, newdata = test_baked, interval = "confidence"))
+  names(ci_lm) <- c(".pred", ".pred_lower", ".pred_upper")
+  bind_cols(test %>% select(date, gold_next_ret), ci_lm)
+})
+
+# Rango de fechas efectivamente predicho en TEST
+rango <- preds_ci %>% summarise(min_fecha = min(date), max_fecha = max(date))
+print(rango)
+
+# Tabla de los últimos 12 meses
+preds_ci %>%
+  arrange(date) %>%
+  slice_tail(n = 12) %>%
+  select(date, gold_next_ret, .pred, .pred_lower, .pred_upper) %>%
+  gt() %>%
+  tab_header(title = "LM múltiple: Real vs Predicho (IC 95%) — últimos 12 meses") %>%
+  fmt_number(columns = c(gold_next_ret, .pred, .pred_lower, .pred_upper),
+             decimals = 6, dec_mark = ",", sep_mark = ".")
+
+```
+
+```{r}
+#| label: graf-preds-ic
+#| fig-cap: "Regresión lineal múltiple: Real vs Predicho con IC 95%"
+#| message: false
+#| warning: false
+library(ggplot2)
+
+preds_ci %>%
+  arrange(date) %>%
+  ggplot(aes(date)) +
+  geom_line(aes(y = gold_next_ret), linewidth = 0.7, alpha = 0.9) +
+  geom_ribbon(aes(ymin = .pred_lower, ymax = .pred_upper), alpha = 0.20) +
+  geom_line(aes(y = .pred), linewidth = 0.9, color = "blue") +
+  labs(
+    title   = "Regresión lineal múltiple: Real vs Predicho con IC 95%",
+    x = NULL, y = "Retorno del oro (t+1)",
+    caption = "Línea negra: real | Línea azul: predicho | Banda: IC 95% (media condicional)"
+  ) +
+  theme_minimal()
+
+```
+
+# Unidad 4. Regresión Logística
+
+En análisis econométrico, cuando la variable dependiente es **binaria** (toma valores 0 o 1), como por ejemplo:
+
+-   Trabaja (1) o no trabaja (0)
+
+-   Está enfermo (1) o no está enfermo (0),
+
+-   Vota por un candidato (1) o no (0),
+
+El uso de un modelo de regresión lineal tradicional no es adecuado. El **modelo logit** se propone como una solución, garantizando que las probabilidades predichas estén siempre en el rango **\[0,1\]** gracias a la función logística.
+
+1.  **Probabilidad en el modelo logit**
+
+    $$
+    P(Y=1 \mid X) \;=\; \frac{e^{\beta_0 + \beta_1 X_1 + \cdots + \beta_k X_k}}{1 + e^{\beta_0 + \beta_1 X_1 + \cdots + \beta_k X_k}}
+    $$
+
+2.  **Forma de razón de probabilidades (odds)**; definimos la razón de probabilidades u odds como:
+
+$$
+\text{odds} \;=\; \frac{P(Y=1 \mid X)}{1 - P(Y=1 \mid X)}
+$$
+
+1.  **Linealización mediante el logit**
+
+    Al aplicar logaritmo a los odds, obtenemos la funcion logit, que es lineal en los parámetros
+
+$$
+\text{logit}(P) \;=\; \ln\left(\frac{P(Y=1 \mid X)}{1 - P(Y=1 \mid X)}\right) 
+= \beta_0 + \beta_1 X_1 + \cdots + \beta_k X_k
+$$
+
+1.  **Interpretación de los coeficientes**
+
+    Un cambio unitario en $X_i$ altera las odds en un factor multiplicativo:
+
+    $$
+    \Delta \text{odds} \;=\; e^{\beta_i}
+    $$
+
+**Ejemplo práctico**
+
+Queremos modelar la probabilidad de que el **precio del oro aumente en un día** ( $Y$=1) o **no aumente** ($Y$=0), en función de variables financieras:
+
+-   **Variación del dólar**: rendimiento diario del dólar
+
+-   **Tasa de interés** : nivel de la tasa de interés de referencia.
+
+    Variable dependiente (Binaria)
+
+$$
+Y = 
+\begin{cases} 
+1 & \text{si el precio del oro sube ese día} \\ 
+0 & \text{si baja o se mantiene} 
+\end{cases}
+$$
+
+2.  **¿Cómo queda el modelo logit?**
+
+$$
+P(Y=1 \mid X) \;=\; 
+\frac{e^{\beta_0 + \beta_1 \cdot dollar\_ret + \beta_2 \cdot rate}}
+{1 + e^{\beta_0 + \beta_1 \cdot dollar\_ret + \beta_2 \cdot rate}}
+$$
+
+3.  **Resultados simulados:**
+
+    Supongamos que la estimación nos da:
+
+    -   $B_0$ =-0.5
+    -   $B_1$ = -2.0 (rendimiento del dólar)
+    -   $B_2$ = -0.3 (tasa de interés)
+
+    **Modelo estimado**
+
+$$
+\hat{P}(Y=1 \mid X) \;=\; 
+\frac{e^{-0.5 - 2.0 \cdot dollar\_ret - 0.3 \cdot rate}}
+{1 + e^{-0.5 - 2.0 \cdot dollar\_ret - 0.3 \cdot rate}}
+$$
+
+4.  **Interpretación de los coeficientes**
+
+    **Coeficiente del Dolar**
+
+    Si el dólar sube un punto porcentual, las *odds* de que el oro suba **se reducen en un factor**
+
+$$
+e^{-2.0} \;\approx\; 0.14
+$$
+
+En términos prácticos: cuando el dólar se fortalece, el oro casi siempre baja (relación inversa clásica).
+
+**Coeficiente de la tasa de interés**
+
+Un incremento de un punto en la tasa de interés reduce las *odds* de que el oro suba en un factor
+
+$$
+e^{-0.3} \;\approx\; 0.74
+$$
+
+Es decir, tasas más altas desincentivan la inversión en oro (activo de refugio sin rendimiento).
+
+**Supongamos:**
+
+-   $dollar_ret=−0.01$ el dólar cae 1%
+
+-   $rate=2$%
+
+-   **Sustituimos**
+
+$$
+z = -0.5 - 2.0(-0.01) - 0.3(2) 
+= -0.5 + 0.02 - 0.6 
+= -1.08
+$$
+
+$$
+\hat{P}(Y=1) \;=\; 
+\frac{e^{-1.08}}{1 + e^{-1.08}} 
+\;\approx\; 0.25
+$$
+
+La probabilidad de que el oro suba bajo esas condiciones es **25%**.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+#| message: false
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(tidymodels)  # rsample, recipes, parsnip, workflows, yardstick, tune, dials
+  library(themis)      # pasos de balanceo (SMOTE, ROSE, etc.)
+  library(gt)
+  library(scales)
+})
+
+# Asegura que la clase objetivo sea factor con niveles (DOWN, UP)
+d <- d |>
+  mutate(up_next = factor(up_next, levels = c("DOWN","UP"))) |>
+  drop_na(up_next, dollar_ret, wti_ret, infl_yoy, ma6, ma12, rsi14)
+
+# Baseline de clase mayoritaria (para comparar)
+tabla_clase <- d |>
+  count(up_next, name = "n") |>
+  mutate(prop = n/sum(n))
+
+gt(tabla_clase) |>
+  tab_header(title = "Distribución de clases (objetivo: up_next)") |>
+  fmt_number(columns = prop, decimals = 3, dec_mark = ",", sep_mark = ".")
+
+```
+
+# **Partición temporal 80/20**
+
+```{r}
+
+set.seed(123)
+datos_cls <- d |>
+  select(date, up_next, dollar_ret, wti_ret, infl_yoy, ma6, ma12, rsi14) |>
+  arrange(date)
+
+split_cls <- initial_time_split(datos_cls, prop = 0.80)
+train_cls  <- training(split_cls)
+test_cls   <- testing(split_cls)
+
+tibble(
+  n_train = nrow(train_cls), n_test = nrow(test_cls),
+  min_train = min(train_cls$date), max_train = max(train_cls$date),
+  min_test  = min(test_cls$date),  max_test  = max(test_cls$date)
+) |>
+  gt() |> tab_header(title = "Partición temporal (clasificación)")
+```
+
+## Feature Engineering (recipes)
+
+```{r}
+rec_cls <- recipe(
+  up_next ~ dollar_ret + wti_ret + infl_yoy + ma6 + ma12 + rsi14,
+  data = train_cls
+) |>
+  step_zv(all_predictors()) |>               # quita columnas constantes
+  step_normalize(all_numeric_predictors()) |> # centra/escala numéricos
+  step_corr(all_numeric_predictors(), threshold = 0.95) # colinealidad severa
+rec_cls
+# (Opcional) Si ves desbalance fuerte, puedes balancear SOLO en train:
+# rec_cls <- rec_cls |> step_smote(up_next, over_ratio = 1) 
+# -> requiere library(themis)
+```
+
+**Por qué:** normalizamos escalas; reducimos colinealidad (`ma6` vs `ma12`); opcionalmente balanceamos (SMOTE) si la clase UP o DOWN es muy minoritaria.
+
+## **Especificación del modelo**
+
+```{r}
+mod_log <- logistic_reg() |>
+  set_engine("glm") |>
+  set_mode("classification")
+
+summary(mod_log)
+```
+
+**Por qué:** `glm` logística es interpretable y un buen baseline; luego puedes pasar a `glmnet` con penalización si quieres.
+
+## Workflow
+
+```{r}
+wf_cls <- workflow() |>
+  add_recipe(rec_cls) |>
+  add_model(mod_log)
+
+wf_cls
+
+```
+
+**Por qué:** asegura que el preprocesamiento (receta) se aplique **dentro** del pipeline (sin data leakage) antes de entrenar/predicir.
+
+## **Ajuste (fit) y predicción en test**
+
+```{r}
+
+fit_log <- fit(wf_cls, data = train_cls)
+
+# Probabilidades y clases (umbral 0.5 por defecto)
+pred_cls <- predict(fit_log, new_data = test_cls, type = "prob") |>
+  bind_cols(predict(fit_log, new_data = test_cls, type = "class")) |>
+  bind_cols(test_cls |> select(date, up_next))
+
+pred_cls |> head() |> gt() |> tab_header(title = "Predicciones (muestra)")
+```
+
+-   `type = "prob"` devuelve `(.pred_DOWN, .pred_UP)`
+
+    `type = "class"` usa umbral 0.5 para asignar clase
+
+-    Qué significan las columnas
+
+    -   **`.pred_DOWN` y `.pred_UP`**\
+        Son las **probabilidades estimadas** de que la variable respuesta tome cada clase.
+
+        -   Ejemplo: `0.829 → DOWN`, `0.171 → UP`.
+
+        **`.pred_class`**\
+        Es la **clase predicha** por el modelo. Se asigna según la probabilidad mayor (umbral 0.5 por defecto).
+
+        -   Si `pred_DOWN > 0.5`, la clase es *DOWN*.
+
+            Si `pred_UP > 0.5`, la clase es *UP*.
+
+        **`date`**\
+        El período de la observación en el set de prueba.
+
+        **`up_next`**\
+        La **clase real observada** (lo que efectivamente pasó en la variable dependiente).
+
+    ## 🔎 Interpretación de la muestra
+
+    1.  **Primera fila (2021-07-01)**
+
+        -   Modelo: 82.9% probabilidad de *DOWN*.
+
+            Predicción: *DOWN*.
+
+            Realidad: *DOWN*.\
+            → ✅ Acierto.
+
+        2.  **Segunda fila (2021-09-01)**
+
+            Prob. *DOWN* 83.1% vs *UP* 16.9%.
+
+            Predicción: *DOWN*.
+
+            Realidad: *DOWN*.\
+            → ✅ Acierto.
+
+        3.  **Tercera fila (2021-10-01)**
+
+        4.  Prob. *DOWN* 87.4% vs *UP* 12.6%.
+
+            Predicción: *DOWN*.
+
+            Realidad: *UP*.\
+            → ❌ Error: el modelo estaba muy seguro pero se equivocó.
+
+        **Cuarta fila (2021-11-01)**
+
+        -   Prob. *DOWN* 87.5%.
+
+            Predicción: *DOWN*
+
+            Realidad: *DOWN*.\
+            → ✅ Acierto
+
+        **Quinta fila (2021-12-01)**
+
+        -   Prob. *DOWN* 89.3%.
+
+            Predicción: *DOWN*.
+
+            Realidad: *DOWN*.\
+            → ✅ Acierto.
+
+        -   **Sexta fila (2022-01-01)**
+
+            Prob. *DOWN* 89.3%.
+
+            Predicción: *DOWN*.
+
+            Realidad: *UP*.\
+            → ❌ Error.
+
+    ## Evaluación de la clasificación
+
+    ### Métricas básicas
+
+```{r}
+# Accuracy, Kappa, etc.
+metrics_overall <- yardstick::metrics(pred_cls, truth = up_next, estimate = .pred_class)
+gt(metrics_overall) |> tab_header(title = "Métricas (umbral 0.5)")
+
+```
+
+## Resultados mostrados
+
+-   **Accuracy (Exactitud): 0.467**
+
+    -   El modelo acierta en **≈47% de los casos**.
+
+        Esto es **peor que lanzar una moneda al aire (50%)**, lo cual indica que el modelo no está aprendiendo un patrón útil con el umbral de 0.5.
+
+    **Kappa (Cohen’s Kappa): 0.000**
+
+    -   Kappa mide el acuerdo entre lo predicho y lo real, corrigiendo por el azar.
+
+        Un valor **cercano a 0** significa que el modelo **no predice mejor que el azar**.
+
+        Valores aceptables suelen estar sobre 0.2 (débil), 0.4 (moderado), 0.6+ (fuerte).
+
+## 🔎 Interpretación
+
+1.  **Sesgo hacia una clase**\
+    El modelo probablemente **predice la mayoría de las veces la clase DOWN**, lo que hace que falle cuando la clase real es UP.\
+    Esto puede deberse a un **desbalance de clases** en los datos de entrenamiento.
+
+    **Umbral fijo (0.5)**\
+    Con un umbral de decisión de 0.5, el modelo puede estar siendo demasiado rígido. Quizás ajustando el umbral se mejore el equilibrio entre **sensibilidad (recall)** y **precisión (precision)**.
+
+    **Valor práctico**\
+    Tal como está, el modelo **no es confiable** para tomar decisiones, porque no supera el azar. Necesita:
+
+    -   Revisión de **balance de clases** (ej. *downsample*, *upsample*, SMOTE).
+
+        Revisión de **features** (quizás faltan variables explicativas relevantes).
+
+        Ajuste del **umbral** para clasificar.
+
+## Matriz de confusión + sensibilidad /especificidad
+
+```{r}
+cm <- conf_mat(pred_cls, truth = up_next, estimate = .pred_class)
+cm
+
+# Sensibilidad (TPR) y especificidad (TNR)
+sens <- sens(pred_cls, truth = up_next, estimate = .pred_class, event_level = "second")  # 'UP' es el segundo nivel
+spec <- spec(pred_cls, truth = up_next, estimate = .pred_class, event_level = "second")
+
+bind_rows(sens, spec) |>
+  gt() |> tab_header(title = "Sensibilidad y Especificidad (umbral 0.5)")
+
+```
+
+-   **14 aciertos en DOWN** → el modelo predijo *DOWN* cuando realmente fue *DOWN*.
+
+    **16 errores en UP** → el modelo siempre predijo *DOWN*, incluso cuando la realidad era *UP*.
+
+    **0 aciertos en UP** → el modelo nunca predijo *UP*.
+
+    -   **Sensibilidad (Recall para UP):**
+
+        -   La sensibilidad mide la capacidad de detectar correctamente los positivos (*UP*).
+
+            Aquí es **0%**, porque nunca se predijo *UP* cuando realmente ocurrió.
+
+            ⚠️ El modelo **falla totalmente en detectar la clase UP**.
+
+        -   **Especificidad (Recall para DOWN): 1**
+
+        -   La especificidad mide la capacidad de detectar correctamente los negativos (*DOWN*).
+
+            Aquí es **100%**, porque **todo lo que fue DOWN se predijo como DOWN**.
+
+            Pero ojo: esto se logra porque el modelo **siempre predice DOWN**, lo cual sesga completamente los resultados.
+
+    -   El modelo está **totalmente sesgado hacia la clase DOWN**.
+
+        Esto es típico en un problema de **desbalance de clases**: si hay más casos de *DOWN* en los datos de entrenamiento, el modelo aprende a "jugar seguro" prediciendo siempre esa clase.
+
+        Por eso:
+
+        -   Accuracy global bajo (≈47%)
+
+            Kappa = 0 (no mejor que el azar).
+
+            Sensibilidad = 0 (incapaz de detectar *UP*).
+
+            Especificidad = 1 (detecta bien *DOWN*, pero por sesgo, no por aprendizaje real).
+
+```{r}
+table(train_cls$up_next) / nrow(train_cls)
+
+```
+
+### **Curva ROC/AUC y Pr AUC**
+
+```{r}
+roc_auc(pred_cls, truth = up_next, .pred_UP, event_level = "second")
+
+roc_df <- roc_curve(pred_cls, truth = up_next, .pred_UP, event_level = "second")
+autoplot(roc_df) + ggtitle("ROC Curve (Logistic glm)")
+
+pr_df <- pr_curve(pred_cls, truth = up_next, .pred_UP, event_level = "second")
+autoplot(pr_df) + ggtitle("Precision–Recall Curve")
+
+```
+
+**Por qué:** ROC/AUC resumen discriminación global; PR-AUC útil cuando la clase positiva es rara.
+
+## Resultados clave
+
+**ROC AUC = 0.585**
+
+-   El área bajo la curva ROC mide la capacidad del modelo para discriminar entre *UP* y *DOWN*.
+
+    -   Un valor de **0.5 indica azar puro**, y **1.0 indica discriminación perfecta**.
+
+    -   Con **0.585**, tu modelo discrimina apenas un poco mejor que el azar, lo cual es **débil desempeño**.
+
+    **Curva ROC**
+
+    -   La curva está muy cercana a la diagonal (línea punteada = azar).
+
+    -   Esto confirma que el poder predictivo es bajo: el modelo no logra separar bien entre positivos (UP) y negativos (DOWN).
+
+    **Curva Precisión–Recall**
+
+    -   La precisión cae rápido a medida que aumenta el recall.
+
+        Esto muestra que cuando intentas capturar más casos *UP* (mayor recall), lo haces a costa de perder precisión (muchos falsos positivos).
+
+        Una curva que se mantiene alta y hacia la esquina superior derecha indicaría buen desempeño, pero aquí está bastante dispersa.
+
+### Afinar umbral
+
+```{r}
+library(tidymodels)
+
+# 1) Curva PR (precision & recall por umbral)
+pr_tbl <- pr_curve(pred_cls,
+                   truth = up_next, 
+                   .pred_UP,                 # sin "estimate ="
+                   event_level = "second")   # 'UP' es la clase positiva
+
+# 2) Calcular F1 por umbral y elegir el mejor
+best_row <- pr_tbl %>%
+  filter(!is.na(.threshold)) %>%               # descarta el punto inicial (NA)
+  mutate(F1 = 2 * precision * recall / (precision + recall)) %>%
+  arrange(desc(F1)) %>%
+  slice(1)
+
+best_row
+thr <- best_row$.threshold
+
+# 3) Re-clasificar con el umbral óptimo y evaluar
+pred_thr <- pred_cls %>%
+  mutate(.pred_class_thr = factor(if_else(.pred_UP >= thr, "UP", "DOWN"),
+                                  levels = c("DOWN","UP")))
+
+metrics(pred_thr, truth = up_next, estimate = .pred_class_thr) %>%
+  gt() %>%
+  tab_header(title = paste0("Métricas con umbral óptimo (F1) = ", round(thr, 3)))
+
+
+```
+
+## Resultados con umbral óptimo (F1)
+
+-   **Umbral = 0.101**\
+    → Esto significa que cualquier probabilidad de *UP* ≥ 0.101 se clasifica como *UP*.\
+    → Es un umbral **mucho más bajo que 0.5**, lo que permite al modelo detectar casos *UP* que antes ignoraba.
+
+    **Recall (sensibilidad para UP) = 0.938**\
+    → El modelo ahora **detecta el 93.7% de los casos UP**.\
+    → Excelente mejora (antes era 0%).
+
+    **Precision (precisión para UP) = 0.60**\
+    → De todas las predicciones *UP*, el 60% fueron correctas.\
+    → Aceptable, considerando que antes era inexistente.
+
+    **F1 = 0.731**\
+    → El F1 combina recall y precision.\
+    → Mejoró sustancialmente (antes ≈0).
+
+    **Accuracy = 0.633**\
+    → El modelo acierta en el 63.3% de los casos totales.\
+    → Mejor que el azar (50%) y también mejor que con umbral 0.5 (46.7%).
+
+    **Kappa = 0.233**\
+    → Aún bajo, pero mejor que 0.\
+    → Indica un acuerdo débil, aunque ya superior al azar.
+
+## 🔎 Interpretación
+
+1.  El ajuste de umbral **corrige el sesgo**: ahora el modelo sí detecta *UP*.
+
+2.  El costo: aumenta la probabilidad de falsos positivos, pero se logra un balance mejor entre sensibilidad y precisión.
+
+3.  Este cambio **mejora notablemente la utilidad práctica del modelo**, especialmente si es crítico no perder casos *UP*.
+
+4.  Sin embargo, la **AUC (≈0.58)** muestra que la capacidad discriminativa del modelo sigue siendo limitada.
+
+## 🚀 Recomendaciones
+
+-   **Mantener este análisis como evidencia** de que el umbral fijo 0.5 no era adecuado.
+
+    Explorar técnicas adicionales para mejorar la discriminación:
+
+    -   Balanceo de clases en el entrenamiento (SMOTE, undersampling, oversampling).
+
+    -   Modelos no lineales (árboles, random forest, XGBoost).
+
+    -   Inclusión de más variables predictoras relevantes.
+
+    Reportar tanto las métricas con **umbral estándar (0.5)** como con **umbral optimizado (≈0.101)** para mostrar la ganancia.
+
+📌 Resumen:\
+Con el umbral optimizado (0.101), el modelo pasó de **“no detectar nunca UP”** a **capturar casi todos los UP (93.7% de recall)**, con un nivel razonable de precisión (60%) y una mejora clara en exactitud y F1.
+
+### **Interpretación del Modelo**
+
+```{r}
+# Extraer el glm "interno" y ver coeficientes
+eng_log <- fit_log |> extract_fit_engine()   # objeto glm
+summary(eng_log)
+
+# Odds Ratios (e^beta) y CIs
+coefs <- broom::tidy(eng_log, conf.int = TRUE, exponentiate = TRUE)
+gt(coefs) |>
+  tab_header(title = "Odds Ratios (exp(beta)) – glm") |>
+  fmt_number(c(estimate, conf.low, conf.high), decimals = 3, dec_mark = ",", sep_mark = ".")
 
 ```
