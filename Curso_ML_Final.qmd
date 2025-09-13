@@ -23,28 +23,133 @@ params:
 
 ------------------------------------------------------------------------
 
-# Prueba
+# **Unidad 1. Reporting con Quarto**
 
-Prueba de Quarto del Banco Central del Ecuador @ghule2022gold
+**¿Qué bases de datos vamos a utilizar?**
 
-1.  prueba 1
+1.  Gold_Price
+2.  Dollar Index
+3.  Crude oild prices: West Texas Intermediate (WTI)
+4.  Federal Founds Effective Rate
+5.  Consumer Price Index for All Urban Consumer
 
-2.  prueba 2
+**Comandos relevantes antes de iniciar**
 
-3.  prueba 3
+• **Ctrl+Shift+c=** Para comentar • **Ctrl+Shift+m =**Función pipe %\>% ó \|\> —“Concatenar funciones” • **Atl+(-) =** asigno \<-
 
-4.  [link](https://www.bce.fin.ec/estadisticas-economicas/)
+## ¿Qué es Quarto?
 
-```{r, echo=FALSE}
-1 + 1
-```
+-   Plataforma de publicación científica
+
+-   Compatible con R, Python, Julia, ObservableJS
+
+-   Produce HTML, PDF, Word, presentaciones
+
+-   Basado en Markdown + chunks de código
+
+## Librerias a utilizar
+
+![](images/Librerias%20a%20instalar.png){fig-align="center" width="598"}
+
+## ¿Qué es el YAML?
+
+El encabezado en formato YAML (YAML Ain’t Markup Language) aparece al principio del documento de Quarto. Aunque es optativo, bajo ciertas circunstancias se genera automáticamente durante el proceso de renderizado que genera el archivo de salida. Tanto el inicio como la finalización del encabezado YAML están definidos por tres guiones aislados en una línea. La información contenida dentro de esas dos líneas constituye el encabezado YAML. Allí suelen incluirse metadatos (tales como título, autor y fecha) y opciones generales que determinan la edición y las salidas (tales como el modo de edición predeterminado, el formato de salida y el tamaño de las imágenes).
+
+![](images/YAML.png){fig-align="center"}
+
+Este YAML configura **qué mostrar** (título, autor, subtítulo, fecha), **cómo mostrarlo** (HTML, PDF, Word con tablas de contenido, secciones numeradas, tablas bonitas) y permite incluir **bibliografía y parámetros dinámicos**.
+
+## Información general del documento
+
+-   **title:** `"Análisis del Precio del Oro"`\
+    → El título principal del documento.
+
+-   **subtitle:** `"Dirección de Comercialización de Oro – BCE"`\
+    → Subtítulo que aparece debajo del título.
+
+-   **author:** `"Econ. William Ramos"`\
+    → Autor o responsable del documento.
+
+-   **date:** `` "`r Sys.Date()`" ``\
+    → Inserta la fecha del sistema de manera automática cuando se renderiza.\
+    (Ejemplo: si hoy es 12/09/2025, el reporte saldrá con esa fecha).
+
+## Formatos de salida
+
+Aquí defines a qué formatos se exportará el documento (HTML, Word, PDF) y con qué configuraciones.
+
+**HTML**
+
+-   **toc: true** → agrega tabla de contenidos.
+
+-   **toc-depth: 3** → muestra hasta nivel 3 de títulos (`###`).
+
+-   **code-fold: true** → permite plegar/desplegar bloques de código.
+
+-   **number-sections: true** → numera los títulos y secciones.
+
+**docx**
+
+Genera un archivo en Word con configuración por defecto.
+
+**PDF**
+
+-   **toc: true** → tabla de contenidos.
+
+-   **number-sections: true** → numeración de secciones.
+
+-   **df-print: kable** → imprime tablas en formato `kable` (más presentable en PDF).
+
+**Bibliografía**
+
+-   Apunta a un archivo **BibTeX (.bib)** con tus referencias.
+
+-   Permite citar dentro del documento con `@Referencia`.
+
+**Idioma**
+
+Establece el idioma principal (afecta a etiquetas automáticas como “Tabla”, “Figura”, etc.).
+
+**Parámetros (params)**
+
+-   Sirven para **pasar valores dinámicos** al documento.
+
+-   Aquí defines `fecha_corte` como `"2024-12-31"`.
+
+-   Luego lo puedes llamar en el texto con:
+
+## Chunk setup
+
+![](images/Chunk.png){fig-align="center" width="457"}
+
+## Práctica de Quarto
+
+**Análisis del oro**
+
+El oro ha desempeñado históricamente un papel central en la economía mundial, tanto como medio de intercambio en los sistemas monetarios clásicos (patrón oro), como en su función contemporánea de activo refugio. A diferencia de otros metales, el oro no solo posee valor industrial o ornamental, sino que se ha consolidado como un instrumento financiero clave para preservar valor frente a la inflación, la volatilidad cambiaria y la incertidumbre económica.
+
+En la actualidad, el análisis del precio del oro se realiza desde múltiples perspectivas:
+
+1.  **Económica y macrofinanciera**:\
+    Factores como la fortaleza del dólar estadounidense, las tasas de interés reales, la inflación y la política monetaria de la Reserva Federal influyen directamente en la cotización del oro. Una depreciación del dólar o tasas de interés bajas suelen impulsar la demanda del metal.
+
+2.  **De mercado y de portafolio**:\
+    Para los inversionistas, el oro actúa como un **activo diversificador**, ya que tiende a mostrar correlaciones negativas o débiles con otros activos de riesgo, como acciones y bonos. Esto lo convierte en una herramienta de cobertura (hedging) frente a escenarios adversos.
+
+3.  **Análisis técnico y de series temporales**:\
+    Se utilizan métodos econométricos (ARIMA, GARCH, VAR) y modelos más recientes de *machine learning* (LSTM, random forests) para identificar patrones, volatilidad y posibles escenarios futuros del precio del oro.
+
+4.  **Perspectiva estructural y geopolítica**:\
+    La oferta mundial de oro está determinada por la producción minera y el reciclaje, mientras que la demanda proviene de la joyería, la industria tecnológica, la inversión financiera y las compras de bancos centrales. A esto se suman factores de riesgo geopolítico y crisis internacionales, que suelen incrementar la demanda del metal como refugio @ghule2022gold.
+
+    Banco Central del Ecuador: [link](https://www.bce.fin.ec/estadisticas-economicas/)
 
 ![](https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRVeaZg1T6yBJG9Rl4P8MCkpv2QYV6pALqItQ&s){fig-align="center" width="150"}
 
-```{r}
-#| label: setup
-#| message: false
-#| warning: false
+**Parámetros iniciales**
+
+```{r, warning=FALSE, message=FALSE}
+
 
 library(tidyverse)
 library(gt)
@@ -100,7 +205,9 @@ fmt_usd <- function(tbl, columns, dec = 2) {
 }
 ```
 
-```{r, echo=FALSE}
+**Primer cuadro**
+
+```{r, warning=FALSE}
 d |> select(date,GOLD) %>% 
   tail(12) %>% 
   gt() %>% 
@@ -108,7 +215,7 @@ d |> select(date,GOLD) %>%
   fmt_usd(columns = GOLD)
 ```
 
-# Gráfico
+## Gráfico
 
 ```{r}
 d %>% 
@@ -142,17 +249,139 @@ d |> select(date,GOLD) %>%
   )
 ```
 
-# **UNIDAD 2. INTRODUCCIÓN A MACHINE LEARNING: REGRESIÓN LINEAL**
+# **Unidad 2. Introducción a Machine Learning: Regresión Lineal**
 
 ![](images/Machine%20Learning_ML.png){fig-align="center" width="300"}
 
 ## Machine Learning
 
+Métodos que permiten que los sistemas aprendan patrones de datos
+
+Diferencias con econometría tradicional:
+
+-   ML enfatiza predicción, no solo inferencia causal
+
+-   Maneja relaciones no lineales y alta dimensión
+
+-   Aplicaciones en finanzas: precios, riesgo, trading.
+
+    Jordan & Mitchell (2015), Science
+
 **¿En donde podemos aplicar Machine Learning (ML)?**
 
-![](images/clipboard-194840170.png)
+-   El oro depende de múltiples variables: dólar, petróleo, tasas de interés, inflación
 
-# UNIDAD 3. Creación de un flujo de trabajo de Machine Learning (ML)
+-   ML captura relaciones no lineales y complejas
+
+## ¿Qué es modelar?
+
+![](images/Que%20es%20modelar.png){fig-align="center"}
+
+**Conceptos claves**
+
+-   Unidad de análisis
+
+-   Set de entrenamiento (Utilizados para modelar)
+
+-   Atributos
+
+-   Variable dependiente, de respuesta o target (Valor predicho)
+
+## Etapas de un problema de Machine Learning
+
+![](images/Proceso%20ML.png){fig-align="center"}
+
+## **Tipos de Machine Learning**
+
+![](images/Tipos%20de%20Machine%20Learning.png){fig-align="center"}
+
+**Fuente:** https://decidesoluciones.es/tipos-de-aprendizaje-algoritmos-machine-learning/
+
+## 
+
+Análisis Exploratorio de Datos (EDA)
+
+-   Generar preguntas acerca de tus datos
+
+-   Visualización, transformación de datos
+
+-   Vemos los aprendido y generamos nuevas preguntas
+
+-   Conocer la base de datos
+
+-   Distribución de las variables
+
+-   Presencia de valores perdidos
+
+-   Outliers
+
+-   Desbalance de clases, Etc
+
+## Métricas de clasificación
+
+![](images/Matriz%20de%20confusion.png){fig-align="center" width="566"}
+
+## Tidymodels
+
+![](images/TIDYMODELS.png){fig-align="center" width="560"}
+
+Fuente: https://www.tidymodels.org/
+
+## 
+
+Flujo de trabajo
+
+-   Partición de datos → rsample
+
+-   Ingeniería de variables → recipes
+
+-   Especificación de modelos → parsnip
+
+-   Integración pipeline → workflows
+
+-   Evaluación → yardstick
+
+## Recipes (Feature Engineering)
+
+-   Preprocesamiento de datos antes de modelar
+
+-   Escalamiento y normalización
+
+-   Creación de nuevas variables
+
+-   Manejo de outliers y NA
+
+-   Reducción de colinealidad
+
+Ejemplo: step_normalize(), step_corr()
+
+## **Parsnip (Ajuste de modelos)**
+
+-   Interfaz unificada para modelos ML
+
+-   Especificación: linear_reg()
+
+-   Motores: lm, glmnet, xgboost Ejemplo: mod \<- linear_reg() \|\> set_engine('lm')
+
+## **Yardstick (Métricas de Ajuste)**
+
+-   Evaluación de modelos.
+
+-   Métricas principales: RMSE – Error cuadrático medio MAE – Error absoluto medio R² – Varianza explicada
+
+-   Comparación de modelos con métricas comunes.
+
+## Comentarios Finales
+
+-   ML complementa la econometría
+
+-   Útil cuando hay muchas variables
+
+-   Relación no lineal o compleja
+
+-   Usos BCE: predicción de oro, inflación, riesgo financiero
+
+# **Unidad 3. Creación de un flujo de trabajo de Machine Learning (ML)**
 
 ## Introducción a la regresión lineal en R-lm
 
@@ -616,7 +845,7 @@ d
 
 ## Análisis Eploratorio de Datos (EDA)
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 library(tidymodels)
 library(tidyverse)
 library(skimr)
@@ -630,13 +859,13 @@ skim(d)
 
 **Datos faltantes**
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 d %>% map_dbl(.f = function(x){sum(is.na(x))})
 ```
 
 **Missing data**
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 plot_missing(
   data    = d, 
   title   = "Porcentaje de valores ausentes",
@@ -647,7 +876,7 @@ plot_missing(
 
 **Distribución o Densidad**
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 p1 <- ggplot(data = d, aes(x = GOLD)) +
       geom_density(fill = "steelblue", alpha = 0.8) +
       geom_rug(alpha = 0.1) +
@@ -702,7 +931,7 @@ ggarrange(p1, p2, p3, ncol = 1, align = "v")
 
 **Distribución de variables continuas**
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 plot_density(
   data    = d %>% select(-up_next),
   ncol    = 3,
@@ -717,7 +946,7 @@ plot_density(
 
 **Plot de variables cualitativas**
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 plot_bar(
   d,
   ncol    = 3,
@@ -731,7 +960,7 @@ plot_bar(
 )
 ```
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 #| label: eda
 eda <- d |>
   select(gold_next_ret, dollar_ret, wti_ret, infl_yoy, ma6, ma12, rsi14) |>
@@ -779,11 +1008,11 @@ tibble(n_train=nrow(train), n_test=nrow(test),
 
 ```
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 print (split)
 ```
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 library(recipes)
 #| label: recipe
 rec <- recipes::recipe(gold_next_ret ~ dollar_ret + wti_ret + infl_yoy + ma6 + ma12 + rsi14, data=train) |>
@@ -816,7 +1045,7 @@ prep(rec)  # mostrará qué variables elimina por colinealidad (p.ej. ma12)
 
 ## **Especificación del modelo y engine (parsnip)**
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 library(parsnip)
 
 mod_lm <- linear_reg() %>% 
@@ -850,7 +1079,7 @@ wf
 
 **Ajuste, predicción y diagnóstico**
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 #| label: fit-predict
 fit_lm <- fit(wf, data = train)
 preds  <- predict(fit_lm, new_data = test) |>
@@ -885,7 +1114,7 @@ preds |> slice_tail(n=24) |>
 
     -   Ej.: 2024-02-01 → `.pred = -0.011772` vs real `0.065018` → fuerte **subestimación** (residuo ≈ +07679.0).
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 #| label: fig-pred-real
 #| fig-cap: "Test: Real vs Predicho"
 preds |>
@@ -911,7 +1140,7 @@ preds |>
 
     -   Idealmente, si el modelo fuera perfecto, los puntos deberían alinearse en una diagonal con pendiente = 1 (línea identidad). Aquí, la nube dispersa muestra que el ajuste es limitado.
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 #| label: resid-time
 #| fig-cap: "Residuos en Test"
 preds |>
@@ -949,7 +1178,7 @@ preds |>
 
 -   Modelos de machine learning adaptados a series temporales (XGBoost con lags, Prophet, LSTM, etc.).
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 #| label: engine-diagnostics
 eng <- fit_lm |> extract_fit_engine()
 broom::glance(eng) |>
@@ -992,11 +1221,8 @@ lmtest::dwtest(eng); lmtest::bptest(eng); performance::check_model(eng)
     -   La densidad de los datos observados y predichos es parecida, aunque el modelo suaviza demasiado los extremos.\
         Ajuste razonable pero con pérdida de variabilidad en colas
 
-<!-- -->
-
 -   **Linearity**
 
-```         
 Residuos frente a valores ajustados → no hay una curva clara, pero sí dispersión irregular.\
 La relación lineal es aceptable, aunque no perfecta.
 
@@ -1022,10 +1248,7 @@ xisten observaciones influyentes, aunque no excesivas.
 -   **Normality of Residuals (Q-Q plot)**
 
 La mayoría de puntos sigue la diagonal, salvo en las colas.\
-Los residuos son aproximadamente normales, con ligeras desviaciones en valores extremos.
-```
-
-## Métricas y validación temporal
+Los residuos son aproximadamente normales, con ligeras desviaciones en valores extremos. \## Métricas y validación temporal
 
 ```{r}
 #| label: metrics
@@ -1087,12 +1310,10 @@ collect_metrics(res_cv) |>
 
     Se especificó y entrenó un modelo de **regresión lineal** en el framework **tidymodels**, con un flujo completo: preprocesamiento (normalización, eliminación de variables redundantes), ajuste y evaluación.
 
-    -   El modelo permitió obtener predicciones y realizar diagnósticos formales (residuos, autocorrelación, heterocedasticidad, normalidad, influencia)
-    -   
+    -   El modelo permitió obtener predicciones y realizar diagnósticos formales (residuos, autocorrelación, heterocedasticidad, normalidad, influencia),
 
 -   **Resultados en Test**
 
-```         
 **RMSE ≈ 0.043** y **MAE ≈ 0.034** → errores moderados en escala de retornos.
 
 **R² ≈ 0.13** → el modelo explica apenas un 13% de la variabilidad.
@@ -1120,47 +1341,46 @@ collect_metrics(res_cv) |>
 -   El retorno del oro no puede explicarse bien solo con regresores lineales como dólar, petróleo, inflación o indicadores técnicos.
 
     Los resultados reflejan la **alta aleatoriedad y ruido en series financieras de retornos**, donde los modelos lineales básicos son insuficientes.
-```
 
-```{r}
-#| label: tabla-preds-ic
-#| message: false
-#| warning: false
-library(tidyverse)
-library(gt)
+    ```{r}
+    #| label: tabla-preds-ic
+    #| message: false
+    #| warning: false
+    library(tidyverse)
+    library(gt)
 
-# Intento 1: pedir IC al workflow (parsnip reciente lo soporta)
-preds_ci <- tryCatch({
-  predict(fit_lm, new_data = test, type = "conf_int") %>%
-    bind_cols(
-      predict(fit_lm, new_data = test, type = "numeric"),
-      test %>% select(date, gold_next_ret)
-    )
-}, error = function(e) {
-  # Fallback: extraer el lm interno y hornear test con la receta
-  rec_prep   <- recipes::prep(rec)
-  test_baked <- recipes::bake(rec_prep, new_data = test)
-  eng_lm     <- workflows::extract_fit_engine(fit_lm)  # objeto 'lm'
-  ci_lm      <- as.data.frame(predict(eng_lm, newdata = test_baked, interval = "confidence"))
-  names(ci_lm) <- c(".pred", ".pred_lower", ".pred_upper")
-  bind_cols(test %>% select(date, gold_next_ret), ci_lm)
-})
+    # Intento 1: pedir IC al workflow (parsnip reciente lo soporta)
+    preds_ci <- tryCatch({
+      predict(fit_lm, new_data = test, type = "conf_int") %>%
+        bind_cols(
+          predict(fit_lm, new_data = test, type = "numeric"),
+          test %>% select(date, gold_next_ret)
+        )
+    }, error = function(e) {
+      # Fallback: extraer el lm interno y hornear test con la receta
+      rec_prep   <- recipes::prep(rec)
+      test_baked <- recipes::bake(rec_prep, new_data = test)
+      eng_lm     <- workflows::extract_fit_engine(fit_lm)  # objeto 'lm'
+      ci_lm      <- as.data.frame(predict(eng_lm, newdata = test_baked, interval = "confidence"))
+      names(ci_lm) <- c(".pred", ".pred_lower", ".pred_upper")
+      bind_cols(test %>% select(date, gold_next_ret), ci_lm)
+    })
 
-# Rango de fechas efectivamente predicho en TEST
-rango <- preds_ci %>% summarise(min_fecha = min(date), max_fecha = max(date))
-print(rango)
+    # Rango de fechas efectivamente predicho en TEST
+    rango <- preds_ci %>% summarise(min_fecha = min(date), max_fecha = max(date))
+    print(rango)
 
-# Tabla de los últimos 12 meses
-preds_ci %>%
-  arrange(date) %>%
-  slice_tail(n = 12) %>%
-  select(date, gold_next_ret, .pred, .pred_lower, .pred_upper) %>%
-  gt() %>%
-  tab_header(title = "LM múltiple: Real vs Predicho (IC 95%) — últimos 12 meses") %>%
-  fmt_number(columns = c(gold_next_ret, .pred, .pred_lower, .pred_upper),
-             decimals = 6, dec_mark = ",", sep_mark = ".")
+    # Tabla de los últimos 12 meses
+    preds_ci %>%
+      arrange(date) %>%
+      slice_tail(n = 12) %>%
+      select(date, gold_next_ret, .pred, .pred_lower, .pred_upper) %>%
+      gt() %>%
+      tab_header(title = "LM múltiple: Real vs Predicho (IC 95%) — últimos 12 meses") %>%
+      fmt_number(columns = c(gold_next_ret, .pred, .pred_lower, .pred_upper),
+                 decimals = 6, dec_mark = ",", sep_mark = ".")
 
-```
+    ```
 
 ```{r}
 #| label: graf-preds-ic
@@ -1420,85 +1640,87 @@ pred_cls |> head() |> gt() |> tab_header(title = "Predicciones (muestra)")
 
     `type = "class"` usa umbral 0.5 para asignar clase
 
--    Qué significan las columnas
+-   Qué significan las columnas
 
-    -   **`.pred_DOWN` y `.pred_UP`**\
-        Son las **probabilidades estimadas** de que la variable respuesta tome cada clase.
+<!-- -->
 
-        -   Ejemplo: `0.829 → DOWN`, `0.171 → UP`.
+-   **`.pred_DOWN` y `.pred_UP`**\
+    Son las **probabilidades estimadas** de que la variable respuesta tome cada clase.
 
-        **`.pred_class`**\
-        Es la **clase predicha** por el modelo. Se asigna según la probabilidad mayor (umbral 0.5 por defecto).
+    -   Ejemplo: `0.829 → DOWN`, `0.171 → UP`.
 
-        -   Si `pred_DOWN > 0.5`, la clase es *DOWN*.
+    **`.pred_class`**\
+    Es la **clase predicha** por el modelo. Se asigna según la probabilidad mayor (umbral 0.5 por defecto).
 
-            Si `pred_UP > 0.5`, la clase es *UP*.
+    -   Si `pred_DOWN > 0.5`, la clase es *DOWN*.
 
-        **`date`**\
-        El período de la observación en el set de prueba.
+        Si `pred_UP > 0.5`, la clase es *UP*.
 
-        **`up_next`**\
-        La **clase real observada** (lo que efectivamente pasó en la variable dependiente).
+    **`date`**\
+    El período de la observación en el set de prueba.
 
-    ## 🔎 Interpretación de la muestra
+    **`up_next`**\
+    La **clase real observada** (lo que efectivamente pasó en la variable dependiente).
 
-    1.  **Primera fila (2021-07-01)**
+## 🔎 Interpretación de la muestra
 
-        -   Modelo: 82.9% probabilidad de *DOWN*.
+1.  **Primera fila (2021-07-01)**
 
-            Predicción: *DOWN*.
+    -   Modelo: 82.9% probabilidad de *DOWN*.
 
-            Realidad: *DOWN*.\
-            → ✅ Acierto.
+        Predicción: *DOWN*.
 
-        2.  **Segunda fila (2021-09-01)**
+        Realidad: *DOWN*.\
+        → ✅ Acierto.
 
-            Prob. *DOWN* 83.1% vs *UP* 16.9%.
+    2.  **Segunda fila (2021-09-01)**
 
-            Predicción: *DOWN*.
+        Prob. *DOWN* 83.1% vs *UP* 16.9%.
 
-            Realidad: *DOWN*.\
-            → ✅ Acierto.
+        Predicción: *DOWN*.
 
-        3.  **Tercera fila (2021-10-01)**
+        Realidad: *DOWN*.\
+        → ✅ Acierto.
 
-        4.  Prob. *DOWN* 87.4% vs *UP* 12.6%.
+    3.  **Tercera fila (2021-10-01)**
 
-            Predicción: *DOWN*.
+    4.  Prob. *DOWN* 87.4% vs *UP* 12.6%.
 
-            Realidad: *UP*.\
-            → ❌ Error: el modelo estaba muy seguro pero se equivocó.
+        Predicción: *DOWN*.
 
-        **Cuarta fila (2021-11-01)**
+        Realidad: *UP*.\
+        → ❌ Error: el modelo estaba muy seguro pero se equivocó.
 
-        -   Prob. *DOWN* 87.5%.
+    **Cuarta fila (2021-11-01)**
 
-            Predicción: *DOWN*
+    -   Prob. *DOWN* 87.5%.
 
-            Realidad: *DOWN*.\
-            → ✅ Acierto
+        Predicción: *DOWN*
 
-        **Quinta fila (2021-12-01)**
+        Realidad: *DOWN*.\
+        → ✅ Acierto
 
-        -   Prob. *DOWN* 89.3%.
+    **Quinta fila (2021-12-01)**
 
-            Predicción: *DOWN*.
+    -   Prob. *DOWN* 89.3%.
 
-            Realidad: *DOWN*.\
-            → ✅ Acierto.
+        Predicción: *DOWN*.
 
-        -   **Sexta fila (2022-01-01)**
+        Realidad: *DOWN*.\
+        → ✅ Acierto.
 
-            Prob. *DOWN* 89.3%.
+    -   **Sexta fila (2022-01-01)**
 
-            Predicción: *DOWN*.
+        Prob. *DOWN* 89.3%.
 
-            Realidad: *UP*.\
-            → ❌ Error.
+        Predicción: *DOWN*.
 
-    ## Evaluación de la clasificación
+        Realidad: *UP*.\
+        → ❌ Error.
 
-    ### Métricas básicas
+## Evaluación de la clasificación
+
+### Métricas básicas
 
 ```{r}
 # Accuracy, Kappa, etc.
@@ -1736,3 +1958,99 @@ gt(coefs) |>
   fmt_number(c(estimate, conf.low, conf.high), decimals = 3, dec_mark = ",", sep_mark = ".")
 
 ```
+
+## Resumen del modelo
+
+Se ajustó un **GLM binomial (logit)** para explicar la probabilidad de que la variable dependiente yyy tome valor 1, en función de:
+
+-   **dollar_ret** (retorno del dólar)
+
+-   **wti_ret** (retorno del petróleo WTI)
+
+-   **infl_yoy** (inflación interanual)
+
+-   **ma6** (media móvil a 6 periodos)
+
+-   **rsi14** (indicador técnico RSI 14 días.
+
+## Coeficientes (log-odds)
+
+En el primer cuadro (`summary(eng_log)`):
+
+-   Los coeficientes representan cambios en los **log-odds** de que $Y$=1.
+
+-   El signo indica la dirección del efecto:
+
+    -   **Negativo** → reduce la probabilidad de éxito.
+
+    -   **Positivo** → aumenta la probabilidad de éxito.
+
+    La **columna Pr(\>\|z\|)** indica si el efecto es estadísticamente significativo.
+
+-   Resultados principales:
+
+    **Intercepto**: 0.080 (p=0.682). No significativo.
+
+    **dollar_ret**: -0.156 (p=0.519). No significativo.
+
+    **wti_ret**: -0.040 (p=0.861). No significativo.
+
+    **infl_yoy**: -0.389 (p=0.102). Cercano a significancia, indica que mayor inflación podría reducir la probabilidad de éxito.
+
+    **ma6**: -0.306 (p=0.140). No significativo, pero con tendencia negativa.
+
+    **rsi14**: 0.623 (p=0.006). **Significativo al 1%**, fuerte predictor positivo.
+
+## Odds Ratios (exp(beta))
+
+En la tabla de **odds ratios** (segunda imagen):
+
+-   **Interpretación**: valores \>1 indican que un aumento en la variable **incrementa la probabilidad de éxito**; \<1 indican lo contrario.
+
+-   Incluyen intervalos de confianza al 95%.
+
+-   Resultados principales:
+
+    **dollar_ret (0.855, IC 0.521–1.369)** → efecto negativo, pero no significativo.
+
+    **wti_ret (0.961, IC 0.610–1.552)** → prácticamente sin efecto, no significativo.
+
+    **infl_yoy (0.678, IC 0.413–1.062)** → reduce la probabilidad (odds más bajos), casi significativo.
+
+    **ma6 (0.737, IC 0.485–1.099)** → reduce la probabilidad, aunque no significativo.
+
+    **rsi14 (1.865, IC 1.207–2.973)** → **efecto positivo y significativo**: cada aumento de una unidad en RSI multiplica por 1.86 las odds de que el evento ocurra.
+
+## Diagnóstico del modelo
+
+-   **Deviance nula**: 163.45
+
+-   **Deviance residual**: 148.93\
+    → El modelo reduce la devianza, pero no de forma drástica.
+
+-   **AIC = 160.93** → métrica de ajuste y comparación entre modelos (menor es mejor).
+
+-   **Iteraciones de Fisher: 4** → convergencia rápida, modelo estable.
+
+## Conclusiones
+
+1.  El único predictor robusto es **rsi14**, que aumenta significativamente la probabilidad de éxito en el modelo.
+
+2.  **Inflación (infl_yoy)** muestra un efecto negativo que merece atención, aunque no alcanza significancia al 5% (sí cercana al 10%).
+
+3.  **Retornos del dólar y del WTI** no parecen aportar información relevante en este caso.
+
+4.  El modelo en general tiene un ajuste moderado (devianza reducida, AIC \~161). Puede mejorarse con:
+
+    -   Transformaciones de variables.
+
+    -   Inclusión de nuevas covariables (ej. tasas de interés reales, volatilidad implícita, indicadores técnicos adicionales).
+
+    -   Modelos no lineales o interacciones.
+
+📌 **Interpretación práctica**:\
+El **RSI de 14 días** es el mejor indicador para explicar la probabilidad de cambio en el oro en este modelo logit. Un aumento en RSI se traduce en casi **el doble de probabilidades** de que el evento ocurra, manteniendo las demás variables constantes.
+
+# Links de interés
+
+-   [Quarto](https://quarto.org/)
